@@ -15,7 +15,7 @@
  * on <http://www.gnu.org/licenses/>.
 */
 
-#include "flying_gazebo_stereo_cam/pcl_rerouter.hpp"
+#include "baxter_ig_interface/pcl_rerouter.hpp"
 #include "ig_active_reconstruction_msgs/PclInput.h"
 
 namespace ros_tools
