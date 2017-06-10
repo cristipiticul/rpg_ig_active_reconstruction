@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<package>
+  <name>baxter_ig_interface</name>
+  <description>Interface for the Baxter robot with the rpg_ig_active_reconstruction package</description>
+  
+  <version>0.0.1</version>
+  
+  <maintainer email="cristipiticul@yahoo.com">Cristian Militaru</maintainer>
+  <author>Cristian Militaru</author>
+  <license>LGPLv3</license>
+  
+  
+  
+  <buildtool_depend>catkin</buildtool_depend>
+  <build_depend>cmake_modules</build_depend>
+  <build_depend>roscpp</build_depend>
+  <build_depend >urdf</build_depend>
+  <build_depend >ig_active_reconstruction</build_depend>
+  <build_depend >ig_active_reconstruction_msgs</build_depend>
+  <build_depend >ig_active_reconstruction_ros</build_depend>
+  <build_depend >ig_active_reconstruction_octomap</build_depend>
+  <build_depend >movements</build_depend>
+  <build_depend >tf</build_depend>
+  <build_depend >tf_conversions</build_depend>
+  <build_depend >gazebo_msgs</build_depend>
+  <build_depend >geometry_msgs</build_depend>
+  <build_depend >sensor_msgs</build_depend>
+  
+  <run_depend>roscpp</run_depend>
+  <run_depend >urdf</run_depend>
+  <run_depend >ig_active_reconstruction</run_depend>
+  <run_depend >ig_active_reconstruction_msgs</run_depend>
+  <run_depend >ig_active_reconstruction_ros</run_depend>
+  <run_depend >ig_active_reconstruction_octomap</run_depend>
+  <run_depend >movements</run_depend>
+  <run_depend >tf</run_depend>
+  <run_depend >tf_conversions</run_depend>
+  <run_depend >gazebo_msgs</run_depend>
+  <run_depend >geometry_msgs</run_depend>
+  <run_depend >sensor_msgs</run_depend>
+
+</package>
+
+

@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<launch>
+  <node pkg="baxter_ig_interface" type="baxter_robot_interface" name="baxter_robot_interface" clear_params="true" output="screen">
+    
+    <param name="camera_optical_frame_name" value="camera_rgb_optical_frame" />
+    <param name="robot_base_frame_name" value="/base" />
+    <param name="sensor_in_topic" value="/camera/depth_registered/points" />
+    <param name="sensor_out_name" value="world/pcl_input" />
+    
+  </node>
+  <include file="$(find baxter_ig_interface)/launch/simple_viewspace_module.launch" />
+  <node pkg="rviz" type="rviz" name="rviz" clear_params="true" output="screen" args="-d $(find baxter_ig_interface)/config/bunny.rviz"/>
+</launch>
