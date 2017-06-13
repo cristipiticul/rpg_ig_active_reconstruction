@@ -34,6 +34,7 @@ namespace views
     viewspace_service_ = nh.advertiseService("views/space", &RosServerCI::viewspaceService, this );
     views_adder_service_ = nh.advertiseService("views/add", &RosServerCI::viewsAdderService, this );
     views_deleter_service_ = nh.advertiseService("views/delete", &RosServerCI::viewsDeleterService, this );
+    viewspace_saver_service_ = nh.advertiseService("views/save", &RosServerCI::viewspaceSaverService, this);
   }
     
   const ViewSpace& RosServerCI::getViewSpace()
@@ -76,6 +77,14 @@ namespace views
     return linked_interface_->deleteView(view_id);
   }
   
+  void RosServerCI::saveToFile( std::string filename )
+  {
+    if( linked_interface_ == nullptr )
+      throw std::runtime_error("views::RosServerCI::Interface not linked.");
+
+    return linked_interface_->saveToFile(filename);
+  }
+
   bool RosServerCI::viewspaceService( ig_active_reconstruction_msgs::ViewSpaceRequest::Request& req, ig_active_reconstruction_msgs::ViewSpaceRequest::Response& res )
   {
     ROS_INFO("Received 'viewspace' call.");
@@ -138,6 +147,19 @@ namespace views
     return true;
   }
   
+  bool RosServerCI::viewspaceSaverService( ig_active_reconstruction_msgs::ViewSpaceSave::Request& req, ig_active_reconstruction_msgs::ViewSpaceSave::Response& res)
+  {
+    ROS_INFO("Received 'save viewspace' call.");
+    if( linked_interface_ == nullptr )
+    {
+      return true;
+    }
+
+    linked_interface_->saveToFile(req.filename);
+
+    return true;
+  }
+
 }
 
 }

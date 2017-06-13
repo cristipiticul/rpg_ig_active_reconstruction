@@ -31,6 +31,7 @@ add_service_files(
   StringList.srv
   ViewRequest.srv
   ViewSpaceRequest.srv
+  ViewSpaceSave.srv
   ViewSpaceUpdate.srv
 )
 

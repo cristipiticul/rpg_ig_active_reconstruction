@@ -5,7 +5,11 @@
 #include <mutex>
 #include <movements/core>
 #include <tf/transform_listener.h>
+#include <actionlib/client/simple_action_client.h>
 #include "ig_active_reconstruction/view.hpp"
+#include "baxter_arm_movement/MoveArmToPoseAction.h"
+
+#define BAXTER_MOVER_ACTION_SERVICE_NAME "/move_arm_to_pose"
 
 namespace baxter_ig_interface
 {
@@ -19,8 +23,10 @@ namespace baxter_ig_interface
      * @param robot_base_frame_name: the frame name of the base (fixed). Used to retrieve the currentPose
      * @param camera_optical_frame_name: the frame name of the camera (optical means the frame which has Z pointing forwards).
      *                 Used to retrieve the currentPose
+     * @param end_effector_frame_name: the frame name of the end-effector to which the camera is attached.
+     *                 (The transform between end_effector_frame_name and camera_optical_frame_name should be static/constant)
      */
-    BaxterController(std::string robot_base_frame_name, std::string camera_optical_frame_name);
+    BaxterController(std::string robot_base_frame_name, std::string camera_optical_frame_name, std::string end_effector_frame_name);
     
     /*! Stops the thread on destruction.*/
     virtual ~BaxterController();
@@ -37,16 +43,40 @@ namespace baxter_ig_interface
     virtual movements::Pose currentPose();
 
   private:
+    /*!
+     * Moves the end-effector (gripper) of the arm to
+     * the specified pose.
+     * @param pose The desired end-effector pose
+     */
+    bool moveEndEffectorTo(geometry_msgs::Pose pose);
+
+    /*! Converts from viewpoint pose to end-effector pose.
+     * @param viewpoint the input viewpoint
+     * @param end_effector_pose (OUTPUT) the result
+     * @return true on success
+     */
+    bool viewpointToEndEffectorPose(movements::Pose viewpoint, geometry_msgs::Pose &end_effector_pose);
+
+    /*! Reads a transform using tf_listener
+     * @param target_frame The base frame (the one to which we want to convert points to)
+     * @param source_frame The frame whose origin and rotation will be found by this call
+     */
+    bool getTransform(std::string target_frame, std::string source_frame, tf::StampedTransform &result);
+
     bool has_moved_;
     
     bool keepPublishing_; //! Thread runs as long as this is true
     std::thread publisher_;
     std::mutex protector_;
     
-    Eigen::Quaterniond cam_to_image_; //! Transformation from camera model to image frame.
+    // Used only for Gazebo, when the x axis points forward (not the z axis)
+    // Eigen::Quaterniond cam_to_image_; //! Transformation from camera model to image frame.
     
+    actionlib::SimpleActionClient<baxter_arm_movement::MoveArmToPoseAction> mover_;
+
     std::string robot_base_frame_name_;
     std::string camera_optical_frame_name_;
+    std::string end_effector_frame_name_;
     tf::TransformListener tf_listener_;
   };
   

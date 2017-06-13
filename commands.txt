@@ -1,0 +1,90 @@
+# start baxter interface:
+rosrun baxter_arm_movement baxter_mover_ik.py
+roslaunch baxter_ig_interface baxter.launch
+roslaunch rgbd_launch kinect_frames.launch
+roslaunch baxter_workspace_training calibration.launch
+
+# start octomap services:
+roslaunch ig_active_reconstruction_octomap octomap_world_representation.launch
+
+# start view planner (the boss):
+roslaunch ig_active_reconstruction_ros basic_view_planner.launch
+
+
+
+# THE FOLLOWING COMMANDS ARE FOR TRAINING/TESTING
+
+# save current pose to viewpoints list (only in memory, the file is unchanged)
+rosrun baxter_ig_interface viewspace_ui.py
+
+
+
+# get current viewpoint
+rosservice call /robot/current_view "request: {}"
+
+
+
+# go to viewpoint (camera should get there)
+rosservice call /robot/move_to "target_view:
+  pose:
+    position: {x: 0.607813776449, y: -0.159527002678, z: 0.328191116293}
+    orientation: {x: 0.812864653174, y: -0.577186525636, z: 0.0709614227558, w: -0.0327299056735}
+  source_frame: ''
+  is_reachable: false
+  is_bad: false
+  visited: 0
+  index: 0
+  associated_names: ['']
+  associated_values: [0]"
+  
+  
+  
+rosservice call /robot/move_to "target_view:
+  pose:
+    position:
+      x: 0.571222429437
+      y: -0.591243877891
+      z: 0.616423667414
+    orientation: 
+      x: -0.572846225684
+      y: 0.799902855496
+      z: -0.167221162001
+      w: 0.0635586852295
+  source_frame: ''
+  is_reachable: false
+  is_bad: false
+  visited: 0
+  index: 0
+  associated_names: ['']
+  associated_values: [0]"
+  
+  
+
+
+  
+# go to pose (end-effector should get there)
+rostopic pub /move_arm_to_pose/goal baxter_arm_movement/MoveArmToPoseActionGoal "header:
+  seq: 0
+  stamp:
+    secs: 0
+    nsecs: 0
+  frame_id: ''
+goal_id:
+  stamp:
+    secs: 0
+    nsecs: 0
+  id: ''
+goal:
+  limb: 'left'
+  frame_name: ''
+  pose:
+    position:
+      x: 0.57
+      y: 0.22
+      z: 0.09
+    orientation:
+      x: 0.13
+      y: 0.99
+      z: 0.01
+      w: 0.02 
+"

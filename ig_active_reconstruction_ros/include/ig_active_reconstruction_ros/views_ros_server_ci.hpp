@@ -23,6 +23,7 @@
 #include "ig_active_reconstruction_msgs/DeleteViews.h"
 #include "ig_active_reconstruction_msgs/ViewSpaceRequest.h"
 #include "ig_active_reconstruction_msgs/ViewSpaceUpdate.h"
+#include "ig_active_reconstruction_msgs/ViewSpaceSave.h"
 
 namespace ig_active_reconstruction
 {
@@ -67,6 +68,8 @@ namespace views
      */
     virtual ViewSpaceUpdateResult deleteView( View::IdType view_id );
     
+    virtual void saveToFile( std::string filename );
+
   protected:
     bool viewspaceService( ig_active_reconstruction_msgs::ViewSpaceRequest::Request& req, ig_active_reconstruction_msgs::ViewSpaceRequest::Response& res );
     
@@ -74,6 +77,8 @@ namespace views
     
     bool viewsDeleterService( ig_active_reconstruction_msgs::DeleteViews::Request& req, ig_active_reconstruction_msgs::DeleteViews::Response& res );
     
+    bool viewspaceSaverService( ig_active_reconstruction_msgs::ViewSpaceSave::Request& req, ig_active_reconstruction_msgs::ViewSpaceSave::Response& res);
+
   protected:
     ros::NodeHandle nh_;
     
@@ -82,6 +87,7 @@ namespace views
     ros::ServiceServer viewspace_service_;
     ros::ServiceServer views_adder_service_;
     ros::ServiceServer views_deleter_service_;
+    ros::ServiceServer viewspace_saver_service_;
   };
   
 }

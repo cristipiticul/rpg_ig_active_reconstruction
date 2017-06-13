@@ -23,6 +23,7 @@
 #include "ig_active_reconstruction_msgs/DeleteViews.h"
 #include "ig_active_reconstruction_msgs/ViewSpaceRequest.h"
 #include "ig_active_reconstruction_msgs/ViewSpaceUpdate.h"
+#include "ig_active_reconstruction_msgs/ViewSpaceSave.h"
 
 
 namespace ig_active_reconstruction
@@ -37,6 +38,7 @@ namespace views
     planning_space_receiver_ = nh.serviceClient<ig_active_reconstruction_msgs::ViewSpaceRequest>("views/space");
     views_adder_ = nh.serviceClient<ig_active_reconstruction_msgs::ViewSpaceUpdate>("views/add");
     views_deleter_ = nh.serviceClient<ig_active_reconstruction_msgs::DeleteViews>("views/delete");
+    viewspace_saver_ = nh.serviceClient<ig_active_reconstruction_msgs::ViewSpaceSave>("views/save");
   }
   
   const ViewSpace& RosClientCI::getViewSpace()
@@ -120,6 +122,14 @@ namespace views
     return ros_conversions::viewSpaceUpdateResultFromMsg(call.response.update_result);
   }
   
+  void RosClientCI::saveToFile( std::string filename )
+  {
+    ig_active_reconstruction_msgs::ViewSpaceSave call;
+
+    ROS_INFO("Demanding to save views in file %s.", filename.c_str());
+    bool response = viewspace_saver_.call(call);
+  }
+
   
 }
 

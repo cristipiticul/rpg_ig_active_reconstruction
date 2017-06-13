@@ -63,12 +63,15 @@ namespace views
      */
     virtual ViewSpaceUpdateResult deleteView( View::IdType view_id );
     
+    virtual void saveToFile( std::string filename );
+
   protected:
     ros::NodeHandle nh_;
     
     ros::ServiceClient planning_space_receiver_;
     ros::ServiceClient views_adder_;
     ros::ServiceClient views_deleter_;
+    ros::ServiceClient viewspace_saver_;
     
     ViewSpace viewspace_;
   };

@@ -4,6 +4,7 @@
     
     <param name="camera_optical_frame_name" value="camera_rgb_optical_frame" />
     <param name="robot_base_frame_name" value="/base" />
+    <param name="end_effector_frame_name" value="/right_gripper" />
     <param name="sensor_in_topic" value="/camera/depth_registered/points" />
     <param name="sensor_out_name" value="world/pcl_input" />
     
