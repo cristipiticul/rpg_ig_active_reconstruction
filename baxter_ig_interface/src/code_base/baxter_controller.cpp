@@ -13,14 +13,69 @@
 
 namespace baxter_ig_interface
 {
+  typedef ig_active_reconstruction::views::View View;
 
-  BaxterController::BaxterController(std::string robot_base_frame_name, std::string camera_optical_frame_name, std::string end_effector_frame_name)
+  /** TODO:
+   * Move additional fields functions to a "view utils" source file.
+   */
+
+  static bool getAdditionalFieldValueFromView( const View& view, std::string field_name, double& value )
+  {
+    bool found = false;
+    for( unsigned int i = 0; i < view.additionalFieldsNames().size() && !found; i++ )
+    {
+      if (view.additionalFieldsNames()[i] == field_name)
+      {
+        value = view.additionalFieldsValues()[i];
+        found = true;
+      }
+    }
+    return found;
+  }
+
+  static bool getPoseFromViewAdditionalFields( const View& view, std::string frame_name, geometry_msgs::Pose& result )
+  {
+    bool success = true;
+
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/position/x", result.position.x));
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/position/y", result.position.y));
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/position/z", result.position.z));
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/orientation/x", result.orientation.x));
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/orientation/y", result.orientation.y));
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/orientation/z", result.orientation.z));
+    success = success && (getAdditionalFieldValueFromView(view, frame_name + "/orientation/w", result.orientation.w));
+
+    if( !success )
+    {
+      ROS_WARN("BaxterController: could not read %s pose from View.", frame_name.c_str());
+      std::cout << "Known field names:";
+      for( unsigned int i = 0; i < view.additionalFieldsNames().size(); i++ )
+      {
+        std::cout << '\n' << view.additionalFieldsNames()[i];
+      }
+      std::cout << '\n' << '\n';
+    }
+    return success;
+  }
+
+  static bool getCameraPoseFromViewAdditionalFields( const View& view, geometry_msgs::Pose& result )
+  {
+    return getPoseFromViewAdditionalFields(view, "camera", result);
+  }
+
+  static bool getObjectEefPoseFromViewAdditionalFields( const View& view, geometry_msgs::Pose& result )
+  {
+    return getPoseFromViewAdditionalFields(view, "object_eef", result);
+  }
+
+  BaxterController::BaxterController(std::string robot_base_frame_name, std::string camera_optical_frame_name, std::string camera_eef_frame_name, std::string object_eef_frame_name)
   : has_moved_(false)
   , keepPublishing_(false)
   //, cam_to_image_(0.5, 0.5, -0.5, 0.5)
   , robot_base_frame_name_(robot_base_frame_name)
   , camera_optical_frame_name_(camera_optical_frame_name)
-  , end_effector_frame_name_(end_effector_frame_name)
+  , camera_eef_frame_name_(camera_eef_frame_name)
+  , object_eef_frame_name_(object_eef_frame_name)
   , mover_(BAXTER_MOVER_ACTION_SERVICE_NAME)
   {
     ROS_INFO("Waiting for %s action server...", BAXTER_MOVER_ACTION_SERVICE_NAME);
@@ -35,23 +90,37 @@ namespace baxter_ig_interface
       publisher_.join();
   }
 
-  bool BaxterController::moveTo(movements::Pose pose)
+  bool BaxterController::moveTo(View& new_view)
   {
     {
       std::lock_guard < std::mutex > guard(protector_);
       has_moved_ = true;
     }
 
-    ROS_INFO("baxter_ig_interface::BaxterController::moveTo: we were asked to move to:");
-    std::cout << pose << '\n';
-
-    geometry_msgs::Pose end_effector_pose;
-    if (!viewpointToEndEffectorPose(pose, end_effector_pose))
+    geometry_msgs::Pose camera_pose;
+    if( !getCameraPoseFromViewAdditionalFields(new_view, camera_pose))
+    {
+      return false;
+    }
+    geometry_msgs::Pose camera_eef_pose;
+    if( !viewpointToEndEffectorPose(camera_pose, camera_eef_pose) )
     {
       return false;
     }
 
-    if (!moveEndEffectorTo(end_effector_pose))
+    geometry_msgs::Pose object_eef_pose;
+    if( !getObjectEefPoseFromViewAdditionalFields(new_view, object_eef_pose) )
+    {
+      return false;
+    }
+
+
+    if( !moveEndEffectorTo("right", camera_eef_pose) )
+    {
+      return false;
+    }
+
+    if( !moveEndEffectorTo("left", object_eef_pose) )
     {
       return false;
     }
@@ -60,16 +129,16 @@ namespace baxter_ig_interface
     return true;
   }
 
-  bool BaxterController::moveEndEffectorTo(geometry_msgs::Pose pose)
+  bool BaxterController::moveEndEffectorTo(std::string limb, geometry_msgs::Pose pose)
   {
     bool success = false;
     baxter_arm_movement::MoveArmToPoseGoal goal;
-    goal.limb = "right";
+    goal.limb = limb;
     goal.pose = pose;
-    ROS_INFO("Sending goal and waiting for result...");
+    ROS_INFO("baxter_ig_interface::BaxterController: Sending goal and waiting for result...");
     mover_.sendGoal(goal);
     bool finishedBeforeTimeout = mover_.waitForResult(ros::Duration(20.0));
-    ROS_INFO("Got result");
+    ROS_INFO("baxter_ig_interface::BaxterController: Got result");
     if (finishedBeforeTimeout)
     {
       success = mover_.getResult()->success;
@@ -94,24 +163,18 @@ namespace baxter_ig_interface
    * we can find the end-effector pose: apply the eef_to_camera
    * transform to the camera_to_base transform.
    */
-  bool BaxterController::viewpointToEndEffectorPose(movements::Pose viewpoint, geometry_msgs::Pose &end_effector_pose)
+  bool BaxterController::viewpointToEndEffectorPose(geometry_msgs::Pose viewpoint, geometry_msgs::Pose &end_effector_pose)
   {
     tf::StampedTransform eef_to_camera;
 
-    if (!getTransform(camera_optical_frame_name_, end_effector_frame_name_, eef_to_camera))
+    if( !getTransform(camera_optical_frame_name_, camera_eef_frame_name_, eef_to_camera) )
     {
       ROS_WARN("baxter_ig_interface::BaxterController::viewpointToEndEffectorPose: could not convert camera pose to end-effector pose");
       return false;
     }
 
-    tf::Vector3 position;
-    tf::Quaternion orientation;
-    tf::vectorEigenToTF(viewpoint.position, position);
-    tf::quaternionEigenToTF(viewpoint.orientation, orientation);
-
     tf::Pose camera_to_base;
-    camera_to_base.setOrigin(position);
-    camera_to_base.setRotation(orientation);
+    tf::poseMsgToTF(viewpoint, camera_to_base);
 
     tf::Pose eef_to_base = camera_to_base * eef_to_camera;
 
@@ -124,7 +187,7 @@ namespace baxter_ig_interface
     movements::Pose result;
 
     tf::StampedTransform transform;
-    if (getTransform(robot_base_frame_name_, camera_optical_frame_name_, transform))
+    if( getTransform(object_eef_frame_name_, camera_optical_frame_name_, transform) )
     {
       tf::vectorTFToEigen(transform.getOrigin(), result.position);
       tf::quaternionTFToEigen(transform.getRotation(), result.orientation);

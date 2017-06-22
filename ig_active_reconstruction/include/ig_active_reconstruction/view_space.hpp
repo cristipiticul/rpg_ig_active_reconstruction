@@ -116,16 +116,18 @@ public:
   void getViewsInRange( View& reference_view, double distance, std::vector<View, Eigen::aligned_allocator<View> >& sub_space );
   
   /*!
-   * saves the poses in the view space to file
+   * saves the poses and additional fields in the view space to file
    */
   void saveToFile( std::string filename );
-  
+
   /*! Loads the viewspace from file
    * 
-   * Format (first number of views in the file, then each view represented by its position and a quaternion for its orientation):
+   * Format (first number of views in the file, then number of additional fields, then the names of the additional fields (denoted by a_f),
+   * then each view represented by its position, a quaternion for its orientation, and the additional fields values, in pairs):
    * Nr_of_views
-   * pos_1.x pos_1.y pos_1.z orientation_1.x orientation_1.y orientation_1.zorientation_1.w
-   * pos_2.x pos_2.y pos_2.z orientation_2.x orientation_2.y orientation_2.z orientation_2.w
+   * Nr_of_additional_fields a_f_1_name a_f_2_name (...)
+   * pos_1.x pos_1.y pos_1.z orientation_1.x orientation_1.y orientation_1.z orientation_1.w a_f_1_1 a_f_1_2 (...)
+   * pos_2.x pos_2.y pos_2.z orientation_2.x orientation_2.y orientation_2.z orientation_2.w a_f_2_1 a_f_2_2 (...)
    * (...)
    * 
    * @param filename Path to the file.    

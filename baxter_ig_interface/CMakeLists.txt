@@ -73,3 +73,15 @@ target_link_libraries(baxter_robot_interface
 add_dependencies(baxter_robot_interface
  ${catkin_EXPORTED_TARGETS}
 )
+
+add_executable(baxter_viewspace_learner
+  src/ros_nodes/baxter_viewspace_learner.cpp
+  ${${PROJECT_NAME}_CODE_BASE}
+)
+target_link_libraries(baxter_viewspace_learner
+   ${catkin_LIBRARIES}
+   ${Boost_LIBRARIES}
+)
+add_dependencies(baxter_viewspace_learner
+ ${catkin_EXPORTED_TARGETS}
+)

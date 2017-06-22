@@ -1,8 +1,5 @@
 # start baxter interface:
-rosrun baxter_arm_movement baxter_mover_ik.py
 roslaunch baxter_ig_interface baxter.launch
-roslaunch rgbd_launch kinect_frames.launch
-roslaunch baxter_workspace_training calibration.launch
 
 # start octomap services:
 roslaunch ig_active_reconstruction_octomap octomap_world_representation.launch

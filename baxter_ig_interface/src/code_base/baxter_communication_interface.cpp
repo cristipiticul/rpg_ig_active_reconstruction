@@ -73,7 +73,7 @@ namespace baxter_ig_interface
   
   bool BaxterCommunicationInterface::moveTo( View& target_view )
   {
-    bool success = baxter_controller_->moveTo(target_view.pose());
+    bool success = baxter_controller_->moveTo(target_view);
     
     return success;
   }

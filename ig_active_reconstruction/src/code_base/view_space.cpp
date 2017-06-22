@@ -214,6 +214,18 @@ void ViewSpace::getViewsInRange( View& _reference_view, double _distance, std::v
   }
 }
 
+static void writePoseToFile( std::ofstream& out, const movements::Pose& pose )
+{
+  out << pose.position.x();
+  out << " " << pose.position.y();
+  out << " " << pose.position.z();
+  out << " " << pose.orientation.x();
+  out << " " << pose.orientation.y();
+  out << " " << pose.orientation.z();
+  out << " " << pose.orientation.w();
+}
+
+/*
 void ViewSpace::saveToFile( std::string _filename )
 {
   std::ofstream out( _filename, std::ofstream::trunc );
@@ -226,18 +238,71 @@ void ViewSpace::saveToFile( std::string _filename )
     View& view = pair.second;
     out<<"\n";
     movements::Pose pose = view.pose();//view_space_[i].pose();
-    out << pose.position.x();
-    out << " " << pose.position.y();
-    out << " " << pose.position.z();
-    out << " " << pose.orientation.x();
-    out << " " << pose.orientation.y();
-    out << " " << pose.orientation.z();
-    out << " " << pose.orientation.w();
+    writePoseToFile(out, pose);
   }
     
   out.close();
 }
+*/
 
+void ViewSpace::saveToFile( std::string _filename )
+{
+  std::ofstream out( _filename, std::ofstream::trunc );
+
+  out<<views_index_map_.size()<<"\n";
+
+  // Writing the additional fields size and names
+  if (views_index_map_.size() == 0)
+  {
+    // The viewspace is empty (we don't care if there are additional fields)
+    out << "0\n";
+  }
+  else
+  {
+    std::vector<std::string>& additional_fields_names = views_index_map_[0].additionalFieldsNames();
+    out << additional_fields_names.size();
+    for( unsigned int i = 0; i < additional_fields_names.size(); i++ )
+    {
+      out << " " << additional_fields_names[i];
+    }
+    out << "\n";
+  }
+
+  //for( unsigned int i=0; i<view_space_.size(); ++i )
+  for( auto& pair: views_index_map_)
+  {
+    View& view = pair.second;
+    out<<"\n";
+
+    movements::Pose pose = view.pose();//view_space_[i].pose();
+    writePoseToFile(out, pose);
+
+    std::vector<double>& additional_fields_values = view.additionalFieldsValues();
+    for( unsigned int i = 0; i < additional_fields_values.size(); i++ )
+    {
+      out << " " << additional_fields_values[i];
+    }
+  }
+
+  out.close();
+}
+
+static bool readPoseFromFile( std::ifstream& in, movements::Pose& pose )
+{
+  bool success = true;
+
+  success = success && ( in>>pose.position.x() );
+  success = success && ( in>>pose.position.y() );
+  success = success && ( in>>pose.position.z() );
+  success = success && ( in>>pose.orientation.x() );
+  success = success && ( in>>pose.orientation.y() );
+  success = success && ( in>>pose.orientation.z() );
+  success = success && ( in>>pose.orientation.w() );
+
+  return success;
+}
+
+/*
 void ViewSpace::loadFromFile( std::string _filename )
 {
   std::ifstream in(_filename, std::ifstream::in);
@@ -251,13 +316,7 @@ void ViewSpace::loadFromFile( std::string _filename )
   for( unsigned int i=0; i<nr_of_views; ++i )
   {
     View new_pose;
-    success = success && ( in>>new_pose.pose().position.x() );
-    success = success && ( in>>new_pose.pose().position.y() );
-    success = success && ( in>>new_pose.pose().position.z() );
-    success = success && ( in>>new_pose.pose().orientation.x() );
-    success = success && ( in>>new_pose.pose().orientation.y() );
-    success = success && ( in>>new_pose.pose().orientation.z() );
-    success = success && ( in>>new_pose.pose().orientation.w() );
+    success = readPoseFromFile(in, new_pose.pose());
     
     if(!success)
       return;
@@ -266,6 +325,77 @@ void ViewSpace::loadFromFile( std::string _filename )
     new_pose.reachable() = true;
     new_pose.timesVisited() = 0;
     
+    //view_space_.push_back(new_pose);
+    views_index_map_[new_pose.index()] = new_pose;//view_space_.back();
+  }
+}
+*/
+
+static bool readAdditionalFieldsValuesFromFile( std::ifstream& in, unsigned int nr_of_additional_fields, std::vector<double>& additional_fields_values )
+{
+  bool success = true;
+  double field_value;
+
+  for (int i = 0; i < nr_of_additional_fields && success; i++)
+  {
+    success = success && ( in>>field_value );
+    if (success)
+    {
+      additional_fields_values.push_back(field_value);
+    }
+  }
+  return success;
+}
+
+static bool readAdditionalFieldsNamesFromFile( std::ifstream& in, const unsigned int& nr_of_additional_fields, std::vector<std::string>& additional_fields_names)
+{
+  bool success = true;
+
+  for( unsigned int i = 0; i < nr_of_additional_fields; i++ )
+  {
+    std::string field_name;
+    success = success && (in >> field_name);
+    if (success)
+    {
+      additional_fields_names.push_back(field_name);
+    }
+  }
+
+  return success;
+}
+
+void ViewSpace::loadFromFile( std::string _filename )
+{
+  std::ifstream in(_filename, std::ifstream::in);
+
+  unsigned int nr_of_views;
+  bool success = (in >> nr_of_views);
+
+  unsigned int nr_of_additional_fields;
+  success = success && (in >> nr_of_additional_fields);
+
+  std::vector<std::string> additional_fields_names;
+  success = success && readAdditionalFieldsNamesFromFile(in, nr_of_additional_fields, additional_fields_names);
+
+  if(!success)
+    return;
+
+  for( unsigned int i=0; i<nr_of_views; ++i )
+  {
+    View new_pose;
+    success = readPoseFromFile(in, new_pose.pose());
+    if(!success)
+      return;
+
+    new_pose.additionalFieldsNames() = additional_fields_names;
+    success = readAdditionalFieldsValuesFromFile(in, nr_of_additional_fields, new_pose.additionalFieldsValues());
+    if(!success)
+      return;
+
+    new_pose.bad() = false;
+    new_pose.reachable() = true;
+    new_pose.timesVisited() = 0;
+
     //view_space_.push_back(new_pose);
     views_index_map_[new_pose.index()] = new_pose;//view_space_.back();
   }

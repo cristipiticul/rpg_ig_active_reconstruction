@@ -1,14 +1,24 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="poses_file" default="both_arms_simple.txt" />
   <node pkg="baxter_ig_interface" type="baxter_robot_interface" name="baxter_robot_interface" clear_params="true" output="screen">
     
     <param name="camera_optical_frame_name" value="camera_rgb_optical_frame" />
     <param name="robot_base_frame_name" value="/base" />
-    <param name="end_effector_frame_name" value="/right_gripper" />
+    <param name="camera_eef_frame_name" value="/right_gripper" />
+    <param name="object_eef_frame_name" value="/left_gripper" />
     <param name="sensor_in_topic" value="/camera/depth_registered/points" />
     <param name="sensor_out_name" value="world/pcl_input" />
     
   </node>
-  <include file="$(find baxter_ig_interface)/launch/simple_viewspace_module.launch" />
+  <include file="$(find baxter_ig_interface)/launch/simple_viewspace_module.launch">
+    <arg name="poses_file" value="$(arg poses_file)" />
+  </include>
   <node pkg="rviz" type="rviz" name="rviz" clear_params="true" output="screen" args="-d $(find baxter_ig_interface)/config/bunny.rviz"/>
+  <node pkg="baxter_arm_movement" type="baxter_mover_ik.py" name="baxter_mover_ik" clear_params="true" output="screen"/>
+  <include file="$(find rgbd_launch)/launch/kinect_frames.launch" />
+  <include file="$(find baxter_workspace_training)/launch/calibration.launch" />
+  <include file="$(find multimaster)/launch/master.launch">
+    <arg name="master" value="$(env ROS_IP)" />
+  </include>
 </launch>

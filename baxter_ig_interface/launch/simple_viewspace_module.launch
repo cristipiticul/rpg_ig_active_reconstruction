@@ -1,8 +1,9 @@
 <?xml version="1.0"?>
 <launch>
+  <arg name="poses_file" />
   <node pkg="ig_active_reconstruction_ros" type="simple_viewspace_module" name="baxter_simple_view_module" clear_params="true" output="screen">
     
-    <param name="viewspace_file_path" value="$(find baxter_ig_interface)/config/workspace_exploration.txt" />
+    <param name="viewspace_file_path" value="$(find baxter_ig_interface)/config/$(arg poses_file)" />
     
   </node>
 </launch>
