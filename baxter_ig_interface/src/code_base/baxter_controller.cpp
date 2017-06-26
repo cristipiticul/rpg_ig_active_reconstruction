@@ -211,7 +211,7 @@ namespace baxter_ig_interface
     {
       ROS_WARN(
           "baxter_ig_interface::BaxterController::currentPose: Could not read transform between frames \"%s\" and \"%s\"",
-          robot_base_frame_name_.c_str(), camera_optical_frame_name_.c_str());
+          source_frame.c_str(), target_frame.c_str());
     }
     return success;
   }

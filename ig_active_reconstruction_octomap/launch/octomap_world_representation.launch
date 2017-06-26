@@ -3,7 +3,7 @@
   <node pkg="ig_active_reconstruction_octomap" type="octomap_world_representation" name="octomap_world_representation" clear_params="true" output="screen">
     
     <!--Octree configuration-->
-    <param name="resolution_m" value="0.007" />
+    <param name="resolution_m" value="0.004" />
     <param name="occupancy_threshold" value="0.5" />
     <param name="hit_probability" value="0.7" />
     <param name="miss_probability" value="0.4" />

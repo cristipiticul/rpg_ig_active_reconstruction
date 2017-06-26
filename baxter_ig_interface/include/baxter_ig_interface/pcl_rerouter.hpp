@@ -51,12 +51,16 @@ namespace ros_tools
      */
     void pclCallback( const sensor_msgs::PointCloud2ConstPtr& msg );
     
+    sensor_msgs::PointCloud2 preprocessPointCloud( const sensor_msgs::PointCloud2ConstPtr& cloud_in );
+
   protected:
     ros::NodeHandle nh_;
     ros::Subscriber pcl_subscriber_;
     ros::Publisher pcl_publisher_;
     ros::ServiceClient pcl_service_caller_;
     
+    ros::ServiceClient preprocess_point_cloud_service_caller_;
+
     bool forward_one_;
     bool has_published_one_;
     

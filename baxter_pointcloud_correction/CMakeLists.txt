@@ -12,15 +12,20 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_msgs
   pcl_ros
   roscpp
+  rospy
   sensor_msgs
   std_msgs
+  baxter_arm_movement
 )
+
+catkin_python_setup()
 
 generate_dynamic_reconfigure_options(cfg/SegmentationParameters.cfg)
 
 add_service_files(
   FILES
   SegmentPointCloud.srv
+  RegisterPointCloud.srv
 )
 
 generate_messages(
@@ -74,4 +79,23 @@ target_link_libraries(model_composer
   ${PCL_IO_LIBRARIES}
   ${PCL_VISUALIZATION_LIBRARIES}
 )
+
+add_executable(registration_to_model_server
+	src/registration_to_model_server.cpp
+)
+add_dependencies(registration_to_model_server
+	${${PROJECT_NAME}_EXPORTED_TARGETS}
+)
+target_link_libraries(registration_to_model_server
+  ${catkin_LIBRARIES}
+  ${Boost_LIBRARIES}
+  ${Boost_FILESYSTEM_LIBRARY}
+  ${Boost_SYSTEM_LIBRARY}
+  ${PCL_COMMON_LIBRARIES}
+  ${PCL_IO_LIBRARIES}
+  ${PCL_VISUALIZATION_LIBRARIES}
+)
+
+catkin_install_python(PROGRAMS scripts/baxter_rotate_gripper.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 

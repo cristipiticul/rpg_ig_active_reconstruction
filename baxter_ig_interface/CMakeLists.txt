@@ -7,6 +7,7 @@ list( APPEND CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS}")
 find_package(catkin REQUIRED COMPONENTS
   cmake_modules
   roscpp
+  baxter_pointcloud_correction
   urdf
   ig_active_reconstruction
   ig_active_reconstruction_msgs

@@ -1,0 +1,6 @@
+<launch>
+	<node name="segmentation_server" pkg="baxter_pointcloud_correction" type="pointcloud_segmentation_server"
+		output="screen" />
+	<node name="registration_server" pkg="baxter_pointcloud_correction" type="registration_to_model_server"
+		output="screen" args="$(find baxter_pointcloud_correction)/data/gripper_base_registered.pcd /left_gripper_base" />
+</launch>

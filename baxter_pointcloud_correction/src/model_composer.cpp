@@ -26,27 +26,14 @@
 typedef pcl::PointXYZRGB PointType;
 typedef pcl::PointCloud<PointType> PointCloud;
 
+const double VOXEL_GRID_LEAF_SIZE = 0.003;
+
 void usage( char* program_name )
 {
   std::cout << "Usage: " << program_name << " <folder-name>\n";
 }
 
 pcl::visualization::PCLVisualizer::Ptr p;
-////////////////////////////////////////////////////////////////////////////////
-/** \brief Display source and target on the second viewport of the visualizer
- *
- */
-void showCloudsRight(const PointCloud::Ptr cloud_target, const PointCloud::Ptr cloud_source)
-{
-  p->removePointCloud ("source");
-  p->removePointCloud ("target");
-
-
-  p->addPointCloud<PointType> (cloud_target, "target");
-  p->addPointCloud<PointType> (cloud_source, "source");
-
-  p->spinOnce();
-}
 
 /** \brief Align a pair of PointCloud datasets and return the result
   * \param cloud_src the source PointCloud
@@ -60,7 +47,7 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   PointCloud::Ptr tgt (new PointCloud);
   pcl::VoxelGrid<PointType> grid;
 
-  grid.setLeafSize (0.005, 0.005, 0.005);
+  grid.setLeafSize (VOXEL_GRID_LEAF_SIZE, VOXEL_GRID_LEAF_SIZE, VOXEL_GRID_LEAF_SIZE);
   grid.setInputCloud (cloud_src);
   grid.filter (*src);
 
@@ -75,7 +62,7 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   reg.setMaxCorrespondenceDistance (0.01);
 
   PointCloud::Ptr reg_result(new PointCloud);
-  reg.setMaximumIterations(200);
+  reg.setMaximumIterations(2);
   reg.setInputSource (src);
   reg.setInputTarget (tgt);
   reg.align(*reg_result);
@@ -84,13 +71,14 @@ void pairAlign (const PointCloud::Ptr cloud_src, const PointCloud::Ptr cloud_tgt
   p->removePointCloud ("source");
   p->removePointCloud ("target");
 
-  p->addPointCloud<PointType> (cloud_src, "source");
+  pcl::visualization::PointCloudColorHandlerCustom<PointType> green(tgt, 0, 255, 0);
+  p->addPointCloud<PointType> (tgt, green, "target");
+  pcl::visualization::PointCloudColorHandlerCustom<PointType> blue(reg_result, 0, 0, 255);
+  p->addPointCloud<PointType> (reg_result, blue, "source");
 
-  PCL_INFO ("Press q to continue the registration.\n");
-  p->spin ();
-
-  p->removePointCloud ("source");
-  p->removePointCloud ("target");
+  //PCL_INFO ("Press q to continue the registration.\n");
+  //p->spin ();
+  p->spinOnce();
  }
 
 /**
@@ -123,6 +111,9 @@ void readPcdFiles(std::string folder_path, std::vector<PointCloud::Ptr>& clouds)
     clouds.push_back(cloud);
   }
 }
+
+void registerAllPointClouds( std::vector<PointCloud::Ptr>& clouds, std::vector<int> order );
+std::vector<int> circularRange( int start, int minimum, int maximum, int step );
 
 int main( int argc, char** argv )
 {
@@ -168,15 +159,97 @@ int main( int argc, char** argv )
   // TODO: Remove outliers
 
   // Registration and composition
-  Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
-  PointCloud::Ptr model(new PointCloud(*clouds[0]));
+  PointCloud::Ptr model(new PointCloud);
   pcl::visualization::PCLVisualizer visualizer("model");
-  visualizer.addPointCloud<PointType>(model, "model");
   visualizer.addCoordinateSystem(0.1);
-  for( unsigned int i = 1; i < clouds.size(); i++ )
+  const int nr_iterations = 10;
+  std::vector<int> increasing_range = circularRange(0, 0, clouds.size() - 1, 1);
+  std::vector<int> decreasing_range = circularRange(clouds.size() - 1, 0, clouds.size() - 1, -1);
+  for( int i = 0; i < nr_iterations && ros::ok(); i++ )
   {
-    PointCloud::Ptr cloud = clouds[i];
-    PointCloud::Ptr prev_cloud = clouds[i - 1];
+    ROS_INFO("Iteration %d/%d", i + 1, nr_iterations);
+    ROS_INFO("Registration in increasing-order");
+    registerAllPointClouds(clouds, increasing_range);
+
+    model->clear();
+    for( unsigned int i = 0; i < clouds.size(); i++ )
+    {
+      *model += *clouds[i];
+    }
+    if( !visualizer.updatePointCloud<PointType>(model, "model") )
+    {
+      visualizer.addPointCloud<PointType>(model, "model");
+    }
+    visualizer.spinOnce();
+
+    ROS_INFO("Registration in decreasing-order");
+    registerAllPointClouds(clouds, decreasing_range);
+
+    model->clear();
+    for( unsigned int i = 0; i < clouds.size(); i++ )
+    {
+      *model += *clouds[i];
+    }
+    if( !visualizer.updatePointCloud<PointType>(model, "model") )
+    {
+      visualizer.addPointCloud<PointType>(model, "model");
+    }
+    visualizer.spinOnce();
+  }
+
+  pcl::VoxelGrid<PointType> grid;
+  PointCloud::Ptr model_downsampled(new PointCloud);
+  grid.setLeafSize(VOXEL_GRID_LEAF_SIZE, VOXEL_GRID_LEAF_SIZE, VOXEL_GRID_LEAF_SIZE);
+  grid.setInputCloud(model);
+  grid.filter(*model_downsampled);
+  visualizer.updatePointCloud<PointType>(model_downsampled, "model");
+  visualizer.spin();
+
+  std::string result_file_path = ros::package::getPath("baxter_pointcloud_correction")
+    + "/data/" + folder_name + "_registered.pcd";
+  pcl::io::savePCDFile(result_file_path, *model_downsampled);
+
+  return 0;
+}
+
+std::vector<int> circularRange( int start, int minimum, int maximum, int step )
+{
+  if( step != 1 && step != -1 )
+  {
+    ROS_WARN("The model_composer::circularRange function was designed for step==1 or -1. It was called with step %d, which may cause unpredicted results", step);
+  }
+  std::vector<int> result;
+  int i = start;
+  do
+  {
+    result.push_back(i);
+    if( i == minimum && step < 0 )
+    {
+      i = maximum;
+    }
+    else if( i == maximum && step > 0 )
+    {
+      i = minimum;
+    }
+    else
+    {
+      i = i + step;
+    }
+  }
+  while( i != start );
+  return result;
+}
+
+void registerAllPointClouds( std::vector<PointCloud::Ptr>& clouds, std::vector<int> order )
+{
+  Eigen::Matrix4f GlobalTransform = Eigen::Matrix4f::Identity();
+  std::vector<Eigen::Matrix4f> transforms;
+  transforms.push_back(GlobalTransform);
+  for( unsigned int i = 1; i < order.size(); i++ )
+  {
+    ROS_INFO("Registering cloud pair %u/%lu", i, order.size() - 1);
+    PointCloud::Ptr cloud = clouds[order[i]];
+    PointCloud::Ptr prev_cloud = clouds[order[i - 1]];
 
     Eigen::Matrix4f cloudToPrevCloud;
     pairAlign(cloud, prev_cloud, cloudToPrevCloud);
@@ -184,24 +257,16 @@ int main( int argc, char** argv )
     //update the global transform
     GlobalTransform = GlobalTransform * cloudToPrevCloud;
 
-    //transform current pair into the global transform
-    PointCloud transformed;
-    pcl::transformPointCloud(*cloud, transformed, GlobalTransform);
-    *model += transformed;
-    visualizer.updatePointCloud<PointType>(model, "model");
-    visualizer.spinOnce();
+    transforms.push_back(GlobalTransform);
   }
-  pcl::VoxelGrid<PointType> grid;
-  PointCloud::Ptr model_downsampled(new PointCloud);
-  grid.setLeafSize(0.005, 0.005, 0.005);
-  grid.setInputCloud(model);
-  grid.filter(*model_downsampled);
-  visualizer.updatePointCloud<PointType>(model_downsampled, "model");
-  visualizer.spin();
+  for( unsigned int i = 1; i < order.size(); i++ )
+  {
+    PointCloud::Ptr& cloud = clouds[order[i]];
+    pcl::visualization::PointCloudColorHandlerCustom<PointType> green(cloud, 0, 255, 0);
 
-  std::string result_file_path = ros::package::getPath("baxter_pointcloud_correction")
-    + "/data/" + folder_name + ".pcd";
-  pcl::io::savePCDFile(result_file_path, *model_downsampled);
-
-  return 0;
+    //transform current pair into the global transform
+    PointCloud::Ptr transformed(new PointCloud);
+    pcl::transformPointCloud(*cloud, *transformed, transforms[i]);
+    cloud = transformed;
+  }
 }

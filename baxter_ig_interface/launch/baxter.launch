@@ -21,4 +21,5 @@
   <include file="$(find multimaster)/launch/master.launch">
     <arg name="master" value="$(env ROS_IP)" />
   </include>
+  <include file="$(find baxter_pointcloud_correction)/launch/correction_server.launch" />
 </launch>

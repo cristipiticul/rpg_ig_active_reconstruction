@@ -18,6 +18,9 @@
 #include "baxter_ig_interface/pcl_rerouter.hpp"
 #include "ig_active_reconstruction_msgs/PclInput.h"
 
+#include "baxter_pointcloud_correction/RegisterPointCloud.h"
+#define POINTCLOUD_REGISTRATION_SERVICE_NAME "register_pointcloud"
+
 namespace ros_tools
 {
   
@@ -30,6 +33,7 @@ namespace ros_tools
     pcl_subscriber_ = nh_.subscribe( in_name,1, &PclRerouter::pclCallback, this );
     pcl_publisher_ = nh_.advertise<sensor_msgs::PointCloud2>(out_name, 1);
     pcl_service_caller_ = nh_.serviceClient<ig_active_reconstruction_msgs::PclInput>(out_name);
+    preprocess_point_cloud_service_caller_ = nh_.serviceClient<baxter_pointcloud_correction::RegisterPointCloud>(POINTCLOUD_REGISTRATION_SERVICE_NAME);
   }
   
   bool PclRerouter::rerouteOneToTopic(ros::Duration max_wait_time)
@@ -68,22 +72,37 @@ namespace ros_tools
   
   void PclRerouter::pclCallback( const sensor_msgs::PointCloud2ConstPtr& msg )
   {
-    if(forward_one_)
+    if(forward_one_ || one_to_srv_)
     {
-      pcl_publisher_.publish(msg);
-      has_published_one_ = true;
-      forward_one_ = false;
-    }
-    else if(one_to_srv_)
-    {
-      ig_active_reconstruction_msgs::PclInput call;
-      call.request.pointcloud = *msg;
-      pcl_service_caller_.call(call);
-      service_response_ = call.response.success;
-      one_to_srv_ = false;
+      sensor_msgs::PointCloud2 cloud = preprocessPointCloud(msg);
+      if(forward_one_)
+      {
+        pcl_publisher_.publish(cloud);
+        has_published_one_ = true;
+        forward_one_ = false;
+      }
+      else if(one_to_srv_)
+      {
+        ig_active_reconstruction_msgs::PclInput call;
+        call.request.pointcloud = cloud;
+        pcl_service_caller_.call(call);
+        service_response_ = call.response.success;
+        one_to_srv_ = false;
+      }
+
     }
     
     return;
   }
   
+  sensor_msgs::PointCloud2 PclRerouter::preprocessPointCloud( const sensor_msgs::PointCloud2ConstPtr& cloud_in )
+  {
+    baxter_pointcloud_correction::RegisterPointCloud::Request req;
+    baxter_pointcloud_correction::RegisterPointCloud::Response res;
+    req.cloud_in = *cloud_in;
+    ROS_INFO("PclRerouter: Sending cloud to service %s", preprocess_point_cloud_service_caller_.getService().c_str());
+    preprocess_point_cloud_service_caller_.call(req, res);
+    return res.cloud_out;
+  }
+
 }
